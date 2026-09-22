@@ -2,6 +2,7 @@
   "name": "vmc-session-injector-web",
   "version": "1.1.0",
   "private": true,
+  "homepage": "https://akshutgoyal.github.io/vmc-weblogin/",
   "description": "Web app that turns a roll number + activation code into a browser session injector snippet. Runs on localhost with Node and on GitHub Pages as a static site.",
   "scripts": {
     "build": "npm run build:node && npm run build:web && npm run build:pages",

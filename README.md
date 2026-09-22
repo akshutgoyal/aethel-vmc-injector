@@ -5,6 +5,8 @@ signed-in session into `localStorage`. Paste the snippet into the browser consol
 on any device and that device lands on `studentweb.vidyamandir.com/learn` already
 signed in.
 
+**Live site: <https://akshutgoyal.github.io/vmc-weblogin/>**
+
 Two deployments share one codebase:
 
 | Target | How the login request is made | Where it runs |
@@ -70,12 +72,13 @@ This serves the exact bytes GitHub Pages will host, including the
 
 `.github/workflows/pages.yml` publishes on every push to `main`:
 
-1. Settings → Pages → **Source: GitHub Actions** (one-time).
-2. Push to `main`, or run the workflow manually.
+1. Settings → Pages → **Source: GitHub Actions** (already set on this repo).
+2. Push to `main`, or run the workflow manually with `gh workflow run pages.yml`.
 
 The workflow typechecks, builds, sanity-checks `public/`, uploads it as the Pages
-artifact and deploys it. All paths in the shell are relative (`./assets/...`), so
-the site works from the `/vmc-weblogin/` subpath without extra configuration.
+artifact and deploys it to <https://akshutgoyal.github.io/vmc-weblogin/>. All
+paths in the shell are relative (`./assets/...`), so the site works from the
+`/vmc-weblogin/` subpath without extra configuration.
 
 > GitHub Pages serves static files only and cannot run `src/server.ts`, which is
 > why the hosted copy calls the VMC API from the browser. That endpoint answers
