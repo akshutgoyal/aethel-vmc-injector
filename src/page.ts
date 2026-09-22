@@ -1,8 +1,28 @@
-export const PAGE = `<!doctype html>
+export interface PageOptions {
+  /**
+   * `server` posts the credentials to the local Node API; `static` (the GitHub
+   * Pages build) lets the browser call the VMC API directly.
+   */
+  mode: "server" | "static";
+}
+
+export function renderPage(options: PageOptions): string {
+  const mode: PageOptions["mode"] = options.mode;
+  const footer =
+    mode === "static"
+      ? "Hosted on GitHub Pages. The roll number and activation code go straight from this browser tab to the VMC API, are used for this one request, and are never stored."
+      : "Runs only on this machine at 127.0.0.1. Credentials are used for this one request and never stored.";
+  const notice =
+    mode === "static"
+      ? '<p class="note">This hosted copy calls the VMC API directly from your browser. Nothing is logged or stored.</p>'
+      : "";
+
+  return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="vmc-mode" content="${mode}">
 <title>VMC Session Injector</title>
 <style>
   *,*::before,*::after{ box-sizing:border-box; }
@@ -14,7 +34,10 @@ export const PAGE = `<!doctype html>
     --accent-ring:rgba(14,111,101,.22);
     --danger:#a13a22; --danger-ink:#7c2c18; --danger-soft:#fbeeea; --danger-line:#f1d8cf;
     --c-com:#98a09b; --c-str:#8a6a2f;
-    --s4:16px; --s9:36px;
+    --s4:16px;
+    --pad:clamp(18px,2.4vw,28px);
+    --gutter:clamp(16px,3vw,36px);
+    --gap:clamp(24px,3.4vw,36px);
     --r:12px; --r-lg:16px;
     --shadow:0 1px 2px rgba(20,24,22,.05), 0 20px 44px -22px rgba(20,24,22,.32);
   }
@@ -24,23 +47,24 @@ export const PAGE = `<!doctype html>
     background:radial-gradient(1100px 560px at 8% -12%, #e8f2f0 0%, transparent 62%), var(--paper);
     font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased;
-    padding:var(--s9) var(--s4) 40px;
+    padding:clamp(20px,4vh,36px) var(--gutter) clamp(24px,5vh,40px);
   }
   .page{ flex:1 1 auto; width:100%; max-width:960px; margin:0 auto;
          display:flex; flex-direction:column; }
+  .content{ width:100%; margin-block:auto; }
 
-  .topbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--s9); }
+  .topbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--gap); }
   .mark{ width:46px; height:46px; flex:none; display:grid; place-items:center;
          border-radius:13px; color:var(--accent); background:var(--accent-soft);
          border:1px solid var(--accent-line); }
   .titles{ min-width:0; }
-  h1{ margin:0; font-size:22px; font-weight:650; letter-spacing:-.018em; }
+  h1{ margin:0; font-size:clamp(19px,1vw + 12px,22px); font-weight:650; letter-spacing:-.018em; }
   .titles p{ margin:3px 0 0; color:var(--muted); font-size:14px; }
 
-  .layout{ flex:1 1 auto; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
-           gap:var(--s9); align-items:start; }
+  .layout{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+           gap:var(--gap); align-items:start; }
   .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
-          padding:28px; box-shadow:var(--shadow);
+          padding:var(--pad); box-shadow:var(--shadow);
           display:flex; flex-direction:column; min-height:300px; }
 
   .field{ margin-bottom:var(--s4); }
@@ -108,10 +132,10 @@ export const PAGE = `<!doctype html>
          background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-line);
          font-size:13px; font-weight:700; }
 
-  .facts{ display:grid; grid-template-columns:1fr 1fr; margin:0 0 var(--s4);
+  .facts{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));
+          gap:1px; margin:0 0 var(--s4); background:var(--line);
           border:1px solid var(--line); border-radius:var(--r); overflow:hidden; }
-  .facts>div{ padding:11px 14px; min-width:0; }
-  .facts>div+div{ border-left:1px solid var(--line); }
+  .facts>div{ padding:11px 14px; min-width:0; background:var(--surface); }
   .facts dt{ margin-bottom:2px; font-size:12px; color:var(--muted); }
   .facts dd{ margin:0; font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
              color:var(--ink); overflow-wrap:anywhere; }
@@ -146,6 +170,7 @@ export const PAGE = `<!doctype html>
   #error .msg{ margin:0; align-self:center; color:var(--danger-ink); font-size:14.5px; }
   #error .btn{ grid-column:2; justify-self:start; margin-top:6px; }
 
+  .aside{ padding-top:var(--pad); }
   .aside h2{ margin:0 0 14px; font-size:13px; font-weight:600; color:var(--muted); }
   .steps{ margin:0; padding:0; list-style:none; counter-reset:s; }
   .steps li{ counter-increment:s; position:relative; padding:0 0 16px 34px;
@@ -161,22 +186,21 @@ export const PAGE = `<!doctype html>
   .steps b{ color:var(--ink); font-weight:600; }
   code{ padding:1px 5px; border-radius:5px; background:var(--accent-soft); color:var(--accent-2);
         font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .note{ margin:16px 0 0; padding-top:14px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13.5px; }
 
-  .foot{ margin-top:var(--s9); padding-top:16px; border-top:1px solid var(--line);
+  .foot{ margin-top:var(--gap); padding-top:16px; border-top:1px solid var(--line);
          color:var(--muted); font-size:13px; }
 
   .sr{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
        clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 
-  @media (max-width:880px){
-    .layout{ grid-template-columns:1fr; gap:28px; }
+  @media (max-width:940px){
+    .layout{ grid-template-columns:1fr; gap:var(--gap); }
+    .aside{ padding-top:0; }
   }
   @media (max-width:520px){
-    body{ padding:20px 14px 32px; }
-    .panel{ padding:20px; min-height:0; }
-    h1{ font-size:20px; }
-    .facts{ grid-template-columns:1fr; }
-    .facts>div+div{ border-left:0; border-top:1px solid var(--line); }
+    .panel{ min-height:0; }
     .actions .btn{ flex:1 1 auto; }
     .actions .spacer{ display:none; }
   }
@@ -188,6 +212,7 @@ export const PAGE = `<!doctype html>
 </head>
 <body>
 <div class="page">
+  <div class="content">
   <header class="topbar">
     <span class="mark" aria-hidden="true">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -284,164 +309,19 @@ export const PAGE = `<!doctype html>
         <li style="--i:2">Copy the snippet, paste it into the console, and press <code>Enter</code>.</li>
         <li style="--i:3">The tab reloads into <code>/learn</code>, already signed in.</li>
       </ol>
+      ${notice}
     </aside>
+  </div>
   </div>
 
   <footer class="foot">
-    Runs only on this machine at 127.0.0.1. Credentials are used for this one request and never stored.
+    ${footer}
   </footer>
 </div>
 <p id="live" class="sr" aria-live="polite"></p>
 
-<script>
-  const $ = (id) => document.getElementById(id);
-  const form = $('form'), status = $('status'), result = $('result'), error = $('error');
-  const phrases = [
-    'Contacting the VMC API',
-    'Verifying your credentials',
-    'Reading the student profile',
-    'Composing the session',
-    'Writing the injector snippet'
-  ];
-  const HL = /(\\/\\/[^\\n]*)|('(?:\\\\.|[^'\\\\])*')|\\b(localStorage\\.setItem|localStorage\\.clear|window\\.location\\.href|console\\.log)\\b/g;
-  const COUNT = /localStorage\\.setItem/g;
-  let js = '', filename = 'inject_session.js', timer = null, i = 0;
-
-  function reveal(el) {
-    el.classList.remove('hidden');
-    el.classList.remove('enter');
-    void el.offsetWidth;
-    el.classList.add('enter');
-  }
-  function hide(el) { el.classList.add('hidden'); el.classList.remove('enter'); }
-  function showFormMsg(on) { $('formMsg').classList.toggle('hidden', !on); }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g,
-      (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-  function highlight(code) {
-    let out = '', last = 0, m;
-    HL.lastIndex = 0;
-    while ((m = HL.exec(code)) !== null) {
-      out += esc(code.slice(last, m.index));
-      const cls = m[1] ? 'c-com' : (m[2] ? 'c-str' : 'c-api');
-      out += '<span class="' + cls + '">' + esc(m[0]) + '</span>';
-      last = m.index + m[0].length;
-    }
-    return out + esc(code.slice(last));
-  }
-
-  function startLoading() {
-    hide(form); hide(result); hide(error); showFormMsg(false);
-    reveal(status);
-    i = 0;
-    const tick = () => { $('log').innerHTML = '<b>&gt;</b> ' + phrases[i % phrases.length]; i++; };
-    tick();
-    timer = setInterval(tick, 950);
-  }
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const rollEl = $('roll'), codeEl = $('code');
-    const roll = rollEl.value.trim(), code = codeEl.value.trim();
-    rollEl.classList.toggle('invalid', !roll);
-    codeEl.classList.toggle('invalid', !code);
-    if (!roll || !code) {
-      showFormMsg(true);
-      (!roll ? rollEl : codeEl).focus();
-      return;
-    }
-    startLoading();
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roll, code })
-      });
-      const data = await res.json();
-      clearInterval(timer);
-      if (!data.ok) { showError(data.error || 'Login failed.'); return; }
-      js = data.js; filename = data.filename;
-      $('jsOut').innerHTML = highlight(js);
-      $('who').textContent = data.name || 'unknown';
-      $('fRoll').textContent = data.roll || 'Not returned';
-      $('fUser').textContent = data.userId || 'Not returned';
-      $('fName').textContent = filename;
-      const bytes = new TextEncoder().encode(js).length;
-      const keys = (js.match(COUNT) || []).length;
-      $('fMeta').textContent = keys + ' keys \\u00b7 ' +
-        (bytes < 1024 ? bytes + ' B' : (bytes / 1024).toFixed(1) + ' KB');
-      hide(status);
-      reveal(result);
-    } catch (err) {
-      clearInterval(timer);
-      showError('Could not reach the local server. Check that it is still running.');
-    }
-  });
-
-  ['roll', 'code'].forEach((id) => $(id).addEventListener('input', () => {
-    $(id).classList.remove('invalid');
-    showFormMsg(false);
-  }));
-
-  $('peek').addEventListener('click', () => {
-    const inp = $('code'), btn = $('peek');
-    const showing = inp.type === 'password';
-    inp.type = showing ? 'text' : 'password';
-    btn.setAttribute('aria-pressed', String(showing));
-    btn.setAttribute('aria-label', showing ? 'Hide activation code' : 'Show activation code');
-    $('icoShow').classList.toggle('hidden', showing);
-    $('icoHide').classList.toggle('hidden', !showing);
-    inp.focus();
-  });
-
-  function showError(msg) {
-    hide(form); hide(status); hide(result);
-    $('errText').textContent = msg;
-    reveal(error);
-  }
-
-  $('copy').addEventListener('click', async () => {
-    let ok = true;
-    try {
-      await navigator.clipboard.writeText(js);
-    } catch (e) {
-      const t = document.createElement('textarea');
-      t.value = js; t.style.position = 'fixed'; t.style.opacity = '0';
-      document.body.appendChild(t); t.select();
-      try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
-      t.remove();
-    }
-    const b = $('copy'), old = b.textContent;
-    b.textContent = ok ? 'Copied' : 'Copy failed';
-    $('live').textContent = ok ? 'Snippet copied to clipboard.' : 'Copy failed. Select the code and copy it manually.';
-    setTimeout(() => { b.textContent = old; }, 1600);
-  });
-
-  $('download').addEventListener('click', () => {
-    const url = URL.createObjectURL(new Blob([js], { type: 'text/javascript' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    $('live').textContent = filename + ' downloaded.';
-  });
-
-  $('again').addEventListener('click', reset);
-  $('retry').addEventListener('click', reset);
-  function reset() {
-    $('roll').value = ''; $('code').value = '';
-    $('roll').classList.remove('invalid'); $('code').classList.remove('invalid');
-    $('code').type = 'password';
-    $('peek').setAttribute('aria-pressed', 'false');
-    $('peek').setAttribute('aria-label', 'Show activation code');
-    $('icoShow').classList.remove('hidden'); $('icoHide').classList.add('hidden');
-    showFormMsg(false);
-    hide(result); hide(error); hide(status);
-    reveal(form);
-    $('roll').focus();
-  }
-</script>
+<script type="module" src="./assets/client.js"></script>
 </body>
 </html>
 `;
+}

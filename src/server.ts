@@ -1,14 +1,37 @@
-import { randomUUID } from "node:crypto";
-import http from "node:http";
-import { buildSession, generateInjector, LOGIN_URL, type UserData } from "./injector";
-import { PAGE } from "./page";
+/**
+ * Local Node server.
+ *
+ * Talks to the VMC API from this machine and serves the same browser bundle
+ * that GitHub Pages hosts, so both deployments share one code path.
+ */
 
-const HOST = "127.0.0.1";
-const PORT = 8765;
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import http from "node:http";
+import path from "node:path";
+import { login } from "./injector.js";
+import { renderPage } from "./page.js";
+
+const HOST = process.env["HOST"] ?? "127.0.0.1";
+const PORT = Number(process.env["PORT"] ?? 8765);
 const MAX_BODY = 1_000_000;
+
+// Browsers cannot set a User-Agent, but Node's fetch can.
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+const ASSETS_DIR = path.resolve(__dirname, "..", "public", "assets");
+const CLIENT_SCRIPT = path.join(ASSETS_DIR, "client.js");
+const PAGE = renderPage({ mode: "server" });
+
+const ASSET_TYPES: Record<string, string> = {
+  ".js": "text/javascript; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+};
 
 function send(res: http.ServerResponse, status: number, type: string, body: string): void {
   const buf = Buffer.from(body, "utf8");
@@ -38,6 +61,22 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+async function serveAsset(rawUrl: string, res: http.ServerResponse): Promise<void> {
+  const name = path.basename(decodeURIComponent(rawUrl.split("?")[0] ?? ""));
+  const file = path.join(ASSETS_DIR, name);
+  try {
+    const body = await readFile(file);
+    res.writeHead(200, {
+      "Content-Type": ASSET_TYPES[path.extname(name)] ?? "application/octet-stream",
+      "Content-Length": String(body.length),
+      "Cache-Control": "no-store",
+    });
+    res.end(body);
+  } catch {
+    send(res, 404, "text/plain; charset=utf-8", "Not found");
+  }
+}
+
 async function handleLogin(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
   let payload: { roll?: unknown; code?: unknown };
   try {
@@ -54,53 +93,8 @@ async function handleLogin(req: http.IncomingMessage, res: http.ServerResponse):
     return;
   }
 
-  const deviceId = randomUUID();
-
-  let response: Response;
-  try {
-    response = await fetch(LOGIN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "User-Agent": USER_AGENT },
-      body: JSON.stringify({
-        loginValue: roll,
-        passwordValue: code,
-        deviceId,
-        identityType: "ROLLNUMBER",
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    sendJson(res, 502, { ok: false, error: `Could not reach the VMC API: ${message}` });
-    return;
-  }
-
-  if (response.status !== 200) {
-    sendJson(res, 200, {
-      ok: false,
-      error: `Login failed (HTTP ${response.status}). Check the roll number and activation code.`,
-    });
-    return;
-  }
-
-  const data = (await response.json()) as UserData;
-  if (!data.accessToken) {
-    sendJson(res, 200, { ok: false, error: "Login failed - no access token returned." });
-    return;
-  }
-
-  const name = data.name ?? "user";
-  const js = generateInjector(buildSession(data, deviceId));
-  const stamp = Math.floor(Date.now() / 1000);
-
-  sendJson(res, 200, {
-    ok: true,
-    name,
-    roll: data.rollNumber ?? roll,
-    userId: data.id ?? data.userId ?? "",
-    js,
-    filename: `inject_session_${(name || "user").replace(/ /g, "_")}_${stamp}.js`,
-  });
+  const result = await login(roll, code, { fetchImpl: fetch, userAgent: USER_AGENT });
+  sendJson(res, 200, result);
 }
 
 async function route(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -108,6 +102,11 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse): Promi
 
   if (req.method === "GET" && (url === "/" || url === "/index.html")) {
     send(res, 200, "text/html; charset=utf-8", PAGE);
+    return;
+  }
+
+  if (req.method === "GET" && url.startsWith("/assets/")) {
+    await serveAsset(url, res);
     return;
   }
 
@@ -132,6 +131,9 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`VMC Session Injector running at http://${HOST}:${PORT}`);
+  if (!existsSync(CLIENT_SCRIPT)) {
+    console.warn("warning: browser bundle missing. Run `npm run build` first.");
+  }
   console.log("Press Ctrl+C to stop.");
 });
 
@@ -140,3 +142,4 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
     server.close(() => process.exit(0));
   });
 }
+

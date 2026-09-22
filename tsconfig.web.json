@@ -1,18 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "commonjs",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ES2022",
     "moduleResolution": "node",
+    "types": [],
     "rootDir": "src",
-    "outDir": "dist",
+    "outDir": "public/assets",
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/client.ts"]
+  "include": ["src/injector.ts", "src/client.ts"]
 }
