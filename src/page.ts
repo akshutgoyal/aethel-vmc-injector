@@ -39,7 +39,6 @@ export function renderPage(options: PageOptions): string {
     --gutter:clamp(16px,3vw,36px);
     --gap:clamp(24px,3.4vw,36px);
     --shell:92rem;                     /* widest the app shell ever gets */
-    --aside:clamp(16rem,24vw,26rem);   /* steps column: fluid, never dominant */
     --measure:78ch;                    /* comfy line length for prose */
     --panel-min:clamp(12.5rem,22vh,20rem);
     --code-max:clamp(13rem,40vh,26rem);
@@ -57,23 +56,28 @@ export function renderPage(options: PageOptions): string {
   }
   .page{ flex:1 1 auto; width:100%; max-width:var(--shell); margin:0 auto; min-width:0;
          display:flex; flex-direction:column; }
-  .content{ width:100%; margin-block:auto; }
+  .content{ width:100%; }
 
   .topbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--gap); }
-  .mark{ width:clamp(2.5rem,3.4vw,3rem); aspect-ratio:1; flex:none; display:grid;
-         place-items:center; border-radius:13px; color:var(--accent);
+  .mark{ width:clamp(2.5rem,3.4vw,3rem); height:clamp(2.5rem,3.4vw,3rem); flex:none;
+         display:grid; place-items:center; border-radius:13px; color:var(--accent);
          background:var(--accent-soft); border:1px solid var(--accent-line); }
   .titles{ min-width:0; }
   h1{ margin:0; font-size:clamp(19px,1vw + 12px,22px); font-weight:650; letter-spacing:-.018em; }
   .titles p{ margin:3px 0 0; color:var(--muted); font-size:14px; }
 
-  .layout{ display:grid; grid-template-columns:minmax(0,1fr) var(--aside);
-           gap:var(--gap); align-items:start; }
+  /* Panel and steps sit in ONE row down to 44rem. The track lists below are
+     deliberately free of var()/math functions: a track list that fails to parse
+     silently collapses the grid to a single column (the two columns would stack)
+     and a var() that resolves to an unparseable value does the same. Keep them
+     literal and step the sidebar width with the breakpoints underneath. */
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) 14rem;
+           gap:var(--gap); align-items:stretch; }
   .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
           padding:var(--pad); box-shadow:var(--shadow); min-width:0;
           display:flex; flex-direction:column; min-height:var(--panel-min); }
 
-  .fields{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(18rem,100%),1fr));
+  .fields{ display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
            gap:var(--s4); margin-bottom:var(--s4); }
   .field{ min-width:0; }
   label{ display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:var(--ink-2); }
@@ -90,7 +94,7 @@ export function renderPage(options: PageOptions): string {
   .control{ position:relative; }
   .control input{ padding-right:clamp(3.25rem,4vw,3.5rem); }
   .peek{ position:absolute; right:.3rem; top:50%; transform:translateY(-50%);
-         width:clamp(2.375rem,3vw,2.625rem); aspect-ratio:1;
+         width:clamp(2.375rem,3vw,2.625rem); height:clamp(2.375rem,3vw,2.625rem);
          display:grid; place-items:center; padding:0;
          border:0; border-radius:9px; background:none; color:var(--muted); cursor:pointer;
          transition:background .16s, color .16s; }
@@ -114,7 +118,7 @@ export function renderPage(options: PageOptions): string {
   .btn-text{ background:none; border-color:transparent; color:var(--muted); padding:0 8px; }
   .btn-text:hover{ color:var(--accent); }
   #go{ width:100%; max-width:22rem; }
-  #form{ margin-block:auto; }
+  #form{ margin-block:0 auto; }
 
   .hidden{ display:none !important; }
   .enter{ animation:enter .42s cubic-bezier(.2,.75,.25,1) both; }
@@ -123,7 +127,8 @@ export function renderPage(options: PageOptions): string {
   #status, #error{ margin-block:auto; }
   #status{ display:flex; flex-direction:column; align-items:center; gap:var(--s4);
            padding:24px 0; text-align:center; }
-  .spinner{ width:clamp(2.25rem,3.6vw,2.75rem); aspect-ratio:1; border-radius:50%;
+  .spinner{ width:clamp(2.25rem,3.6vw,2.75rem); height:clamp(2.25rem,3.6vw,2.75rem);
+            border-radius:50%;
             background:conic-gradient(from 0turn, var(--accent-soft), var(--accent));
             -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);
             mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);
@@ -182,7 +187,7 @@ export function renderPage(options: PageOptions): string {
   #error .msg{ margin:0; align-self:center; color:var(--danger-ink); font-size:14.5px; }
   #error .btn{ grid-column:2; justify-self:start; margin-top:6px; }
 
-  .aside{ padding-top:var(--pad); }
+  .aside{ min-width:0; }
   .aside h2{ margin:0 0 14px; font-size:13px; font-weight:600; color:var(--muted); }
   .steps{ margin:0; padding:0; list-style:none; counter-reset:s; }
   .steps li{ counter-increment:s; position:relative; padding:0 0 16px 34px;
@@ -207,9 +212,14 @@ export function renderPage(options: PageOptions): string {
   .sr{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
        clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 
-  @media (max-width:64rem){
+  @media (min-width:70rem){
+    .layout{ grid-template-columns:minmax(0,1fr) 18rem; }
+  }
+  @media (min-width:88rem){
+    .layout{ grid-template-columns:minmax(0,1fr) 22rem; }
+  }
+  @media (max-width:44rem){
     .layout{ grid-template-columns:1fr; }
-    .aside{ padding-top:0; }
   }
   @media (max-width:34rem){
     #go{ max-width:none; }
