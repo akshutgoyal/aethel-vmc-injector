@@ -1,0 +1,16 @@
+{
+  "name": "vmc-session-injector-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Localhost web app that turns roll number + activation code into a browser session injector snippet.",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc && node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}
