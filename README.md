@@ -39,6 +39,28 @@ client reads it and picks the transport:
 * `server` → `POST /api/login` on the local Node server.
 * `static` → `login()` from `./injector.js` directly, straight to the VMC API.
 
+## Layout
+
+The shell is capped at `92rem` (1472px) rather than the old 960px, and every
+element inside it scales with the viewport instead of being pinned to a fixed
+size:
+
+| Piece | Value |
+| --- | --- |
+| shell | `--shell: 92rem`, always `width:min(100%, …)` |
+| page gutters | `--gutter: clamp(16px,3vw,36px)` |
+| panel padding | `--pad: clamp(18px,2.4vw,28px)` |
+| column gap | `--gap: clamp(24px,3.4vw,36px)` |
+| steps column | `--aside: clamp(16rem,24vw,26rem)`, the panel takes the rest |
+| form fields | `repeat(auto-fit,minmax(min(18rem,100%),1fr))` |
+| inputs / buttons | `min-height: clamp(2.875rem,3.4vw,3.25rem)` |
+| snippet box | `max-height: clamp(13rem,40vh,26rem)` |
+
+So the two credential fields sit side by side whenever both fit at 18rem or
+wider, stack below that, and the two-column page collapses to one column under
+`64rem`. Nothing overflows horizontally from 320px up to 1920px; long snippet
+lines wrap inside the code box rather than widening the page.
+
 ## Local use (Node)
 
 ```bash

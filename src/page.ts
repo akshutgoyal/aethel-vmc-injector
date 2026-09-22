@@ -38,40 +38,49 @@ export function renderPage(options: PageOptions): string {
     --pad:clamp(18px,2.4vw,28px);
     --gutter:clamp(16px,3vw,36px);
     --gap:clamp(24px,3.4vw,36px);
+    --shell:92rem;                     /* widest the app shell ever gets */
+    --aside:clamp(16rem,24vw,26rem);   /* steps column: fluid, never dominant */
+    --measure:78ch;                    /* comfy line length for prose */
+    --panel-min:clamp(12.5rem,22vh,20rem);
+    --code-max:clamp(13rem,40vh,26rem);
     --r:12px; --r-lg:16px;
     --shadow:0 1px 2px rgba(20,24,22,.05), 0 20px 44px -22px rgba(20,24,22,.32);
   }
   html{ -webkit-text-size-adjust:100%; }
   body{
-    margin:0; min-height:100vh; color:var(--ink); display:flex; flex-direction:column;
-    background:radial-gradient(1100px 560px at 8% -12%, #e8f2f0 0%, transparent 62%), var(--paper);
+    margin:0; min-height:100vh; min-height:100dvh; color:var(--ink);
+    display:flex; flex-direction:column;
+    background:radial-gradient(115vw 60vh at 8% -12%, #e8f2f0 0%, transparent 62%), var(--paper);
     font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased;
     padding:clamp(20px,4vh,36px) var(--gutter) clamp(24px,5vh,40px);
   }
-  .page{ flex:1 1 auto; width:100%; max-width:960px; margin:0 auto;
+  .page{ flex:1 1 auto; width:100%; max-width:var(--shell); margin:0 auto; min-width:0;
          display:flex; flex-direction:column; }
   .content{ width:100%; margin-block:auto; }
 
   .topbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--gap); }
-  .mark{ width:46px; height:46px; flex:none; display:grid; place-items:center;
-         border-radius:13px; color:var(--accent); background:var(--accent-soft);
-         border:1px solid var(--accent-line); }
+  .mark{ width:clamp(2.5rem,3.4vw,3rem); aspect-ratio:1; flex:none; display:grid;
+         place-items:center; border-radius:13px; color:var(--accent);
+         background:var(--accent-soft); border:1px solid var(--accent-line); }
   .titles{ min-width:0; }
   h1{ margin:0; font-size:clamp(19px,1vw + 12px,22px); font-weight:650; letter-spacing:-.018em; }
   .titles p{ margin:3px 0 0; color:var(--muted); font-size:14px; }
 
-  .layout{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) var(--aside);
            gap:var(--gap); align-items:start; }
   .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
-          padding:var(--pad); box-shadow:var(--shadow);
-          display:flex; flex-direction:column; min-height:300px; }
+          padding:var(--pad); box-shadow:var(--shadow); min-width:0;
+          display:flex; flex-direction:column; min-height:var(--panel-min); }
 
-  .field{ margin-bottom:var(--s4); }
+  .fields{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(18rem,100%),1fr));
+           gap:var(--s4); margin-bottom:var(--s4); }
+  .field{ min-width:0; }
   label{ display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:var(--ink-2); }
-  input{ width:100%; height:48px; padding:0 14px; color:var(--ink); background:#fdfdfc;
+  input{ width:100%; min-height:clamp(2.875rem,3.4vw,3.25rem); padding:.7rem .875rem;
+         color:var(--ink); background:#fdfdfc;
          border:1px solid var(--line-2); border-radius:10px; outline:none;
-         font:16px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+         font:16px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
          transition:border-color .16s, box-shadow .16s, background .16s; }
   input::placeholder{ color:#a8adaa; }
   input:hover{ border-color:#c7ccc6; }
@@ -79,9 +88,10 @@ export function renderPage(options: PageOptions): string {
   input.invalid{ border-color:var(--danger); box-shadow:0 0 0 4px rgba(161,58,34,.16); }
 
   .control{ position:relative; }
-  .control input{ padding-right:50px; }
-  .peek{ position:absolute; right:5px; top:50%; transform:translateY(-50%);
-         width:40px; height:40px; display:grid; place-items:center; padding:0;
+  .control input{ padding-right:clamp(3.25rem,4vw,3.5rem); }
+  .peek{ position:absolute; right:.3rem; top:50%; transform:translateY(-50%);
+         width:clamp(2.375rem,3vw,2.625rem); aspect-ratio:1;
+         display:grid; place-items:center; padding:0;
          border:0; border-radius:9px; background:none; color:var(--muted); cursor:pointer;
          transition:background .16s, color .16s; }
   .peek:hover{ background:var(--accent-soft); color:var(--accent); }
@@ -91,7 +101,8 @@ export function renderPage(options: PageOptions): string {
             color:var(--danger-ink); background:var(--danger-soft); border:1px solid var(--danger-line); }
 
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px;
-        min-height:46px; padding:0 18px; border:1px solid transparent; border-radius:10px;
+        min-height:clamp(2.875rem,3.4vw,3.125rem); padding:.6rem 1.1rem;
+        border:1px solid transparent; border-radius:10px;
         font:600 15px system-ui,sans-serif; cursor:pointer; white-space:nowrap;
         transition:background .16s, border-color .16s, color .16s, transform .06s, box-shadow .16s; }
   .btn:active{ transform:translateY(1px); }
@@ -102,7 +113,8 @@ export function renderPage(options: PageOptions): string {
   .btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
   .btn-text{ background:none; border-color:transparent; color:var(--muted); padding:0 8px; }
   .btn-text:hover{ color:var(--accent); }
-  #go{ width:100%; }
+  #go{ width:100%; max-width:22rem; }
+  #form{ margin-block:auto; }
 
   .hidden{ display:none !important; }
   .enter{ animation:enter .42s cubic-bezier(.2,.75,.25,1) both; }
@@ -111,7 +123,7 @@ export function renderPage(options: PageOptions): string {
   #status, #error{ margin-block:auto; }
   #status{ display:flex; flex-direction:column; align-items:center; gap:var(--s4);
            padding:24px 0; text-align:center; }
-  .spinner{ width:38px; height:38px; border-radius:50%;
+  .spinner{ width:clamp(2.25rem,3.6vw,2.75rem); aspect-ratio:1; border-radius:50%;
             background:conic-gradient(from 0turn, var(--accent-soft), var(--accent));
             -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);
             mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);
@@ -132,7 +144,7 @@ export function renderPage(options: PageOptions): string {
          background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-line);
          font-size:13px; font-weight:700; }
 
-  .facts{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));
+  .facts{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(12rem,100%),1fr));
           gap:1px; margin:0 0 var(--s4); background:var(--line);
           border:1px solid var(--line); border-radius:var(--r); overflow:hidden; }
   .facts>div{ padding:11px 14px; min-width:0; background:var(--surface); }
@@ -151,7 +163,7 @@ export function renderPage(options: PageOptions): string {
              color:var(--ink-2); font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; }
   .cmeta{ margin-left:auto; flex:none; color:var(--muted);
           font:12px ui-monospace,SFMono-Regular,Menlo,monospace; }
-  pre{ margin:0; padding:14px; max-height:300px; overflow:auto;
+  pre{ margin:0; padding:14px; max-height:var(--code-max); overflow:auto;
        font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink-2);
        white-space:pre-wrap; overflow-wrap:anywhere; }
   pre:focus-visible{ outline:2px solid var(--accent-2); outline-offset:-3px; }
@@ -190,16 +202,17 @@ export function renderPage(options: PageOptions): string {
          color:var(--muted); font-size:13.5px; }
 
   .foot{ margin-top:var(--gap); padding-top:16px; border-top:1px solid var(--line);
-         color:var(--muted); font-size:13px; }
+         color:var(--muted); font-size:13px; max-width:var(--measure); }
 
   .sr{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
        clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 
-  @media (max-width:940px){
-    .layout{ grid-template-columns:1fr; gap:var(--gap); }
+  @media (max-width:64rem){
+    .layout{ grid-template-columns:1fr; }
     .aside{ padding-top:0; }
   }
-  @media (max-width:520px){
+  @media (max-width:34rem){
+    #go{ max-width:none; }
     .panel{ min-height:0; }
     .actions .btn{ flex:1 1 auto; }
     .actions .spacer{ display:none; }
@@ -233,31 +246,33 @@ export function renderPage(options: PageOptions): string {
         <p id="formMsg" class="formmsg hidden" role="alert">
           Enter both the roll number and the activation code.
         </p>
-        <div class="field">
-          <label for="roll">Roll number</label>
-          <input id="roll" name="roll" autocomplete="off" spellcheck="false" placeholder="09P26000591">
-        </div>
-        <div class="field">
-          <label for="code">Activation code</label>
-          <div class="control">
-            <input id="code" name="code" type="password" autocomplete="off" placeholder="As issued with your roll number">
-            <button id="peek" class="peek" type="button" aria-label="Show activation code" aria-pressed="false">
-              <span id="icoShow" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"></path>
-                  <circle cx="12" cy="12" r="2.6"></circle>
-                </svg>
-              </span>
-              <span id="icoHide" class="hidden" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 3l18 18"></path>
-                  <path d="M10.6 6.2A9.7 9.7 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.3 3.9"></path>
-                  <path d="M6.2 6.6C3.6 8.4 2 12 2 12s3.6 6 10 6c1.5 0 2.9-.3 4.2-.9"></path>
-                </svg>
-              </span>
-            </button>
+        <div class="fields">
+          <div class="field">
+            <label for="roll">Roll number</label>
+            <input id="roll" name="roll" autocomplete="off" spellcheck="false" placeholder="09P26000591">
+          </div>
+          <div class="field">
+            <label for="code">Activation code</label>
+            <div class="control">
+              <input id="code" name="code" type="password" autocomplete="off" placeholder="As issued with your roll number">
+              <button id="peek" class="peek" type="button" aria-label="Show activation code" aria-pressed="false">
+                <span id="icoShow" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"></path>
+                    <circle cx="12" cy="12" r="2.6"></circle>
+                  </svg>
+                </span>
+                <span id="icoHide" class="hidden" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3l18 18"></path>
+                    <path d="M10.6 6.2A9.7 9.7 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.3 3.9"></path>
+                    <path d="M6.2 6.6C3.6 8.4 2 12 2 12s3.6 6 10 6c1.5 0 2.9-.3 4.2-.9"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
         <button id="go" class="btn btn-primary" type="submit">Generate injector</button>
