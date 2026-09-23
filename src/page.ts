@@ -38,7 +38,7 @@ export function renderPage(options: PageOptions): string {
     --pad:clamp(18px,2.4vw,28px);
     --gutter:clamp(16px,3vw,36px);
     --gap:clamp(24px,3.4vw,36px);
-    --shell:92rem;                     /* widest the app shell ever gets */
+    --shell:110rem;                     /* widest the app shell ever gets */
     --measure:78ch;                    /* comfy line length for prose */
     --panel-min:clamp(12.5rem,22vh,20rem);
     --code-max:clamp(13rem,40vh,26rem);
@@ -56,6 +56,15 @@ export function renderPage(options: PageOptions): string {
   }
   .page{ flex:1 1 auto; width:100%; max-width:var(--shell); margin:0 auto; min-width:0;
          display:flex; flex-direction:column; }
+  /* Desktop: the page takes exactly 80% of the viewport width (still capped
+     by --shell on ultra-wide screens); the body's side gutters are removed
+     here so the percentage is exact. Below 70rem the gutters return and the
+     page stays full width so phones and narrow windows keep every usable
+     pixel. */
+  @media (min-width:70rem){
+    body{ padding-left:0; padding-right:0; }
+    .page{ width:80%; }
+  }
   .content{ width:100%; margin:auto; }
 
   .topbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--gap); }

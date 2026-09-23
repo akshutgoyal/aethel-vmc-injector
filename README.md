@@ -47,7 +47,7 @@ size:
 
 | Piece | Value |
 | --- | --- |
-| shell | `--shell: 92rem`, always `width:min(100%, …)` |
+| shell | `--shell: 110rem`, page is `width:80%` of the viewport on desktop (`≥70rem`), full width below that |
 | page gutters | `--gutter: clamp(16px,3vw,36px)` |
 | panel padding | `--pad: clamp(18px,2.4vw,28px)` |
 | column gap | `--gap: clamp(24px,3.4vw,36px)` |
