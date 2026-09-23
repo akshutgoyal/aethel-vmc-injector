@@ -39,7 +39,6 @@ export function renderPage(options: PageOptions): string {
     --gutter:clamp(16px,3vw,36px);
     --gap:clamp(24px,3.4vw,36px);
     --shell:110rem;                     /* widest the app shell ever gets */
-    --measure:78ch;                    /* comfy line length for prose */
     --panel-min:clamp(12.5rem,22vh,20rem);
     --code-max:clamp(13rem,40vh,26rem);
     --r:12px; --r-lg:16px;
@@ -218,7 +217,7 @@ export function renderPage(options: PageOptions): string {
          color:var(--muted); font-size:13.5px; }
 
   .foot{ margin-top:var(--gap); padding-top:16px; border-top:1px solid var(--line);
-         color:var(--muted); font-size:13px; max-width:var(--measure); }
+         color:var(--muted); font-size:13px; }
 
   .sr{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
        clip:rect(0 0 0 0); white-space:nowrap; border:0; }
