@@ -56,7 +56,7 @@ export function renderPage(options: PageOptions): string {
   }
   .page{ flex:1 1 auto; width:100%; max-width:var(--shell); margin:0 auto; min-width:0;
          display:flex; flex-direction:column; }
-  .content{ width:100%; }
+  .content{ width:100%; margin:auto; }
 
   .topbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--gap); }
   .mark{ width:clamp(2.5rem,3.4vw,3rem); height:clamp(2.5rem,3.4vw,3rem); flex:none;
@@ -66,13 +66,15 @@ export function renderPage(options: PageOptions): string {
   h1{ margin:0; font-size:clamp(19px,1vw + 12px,22px); font-weight:650; letter-spacing:-.018em; }
   .titles p{ margin:3px 0 0; color:var(--muted); font-size:14px; }
 
-  /* Panel and steps sit in ONE row down to 44rem. The track lists below are
+  /* Two columns inside .content: the left column stacks the topbar over the
+     panel, the right column is the aside. The track lists below are
      deliberately free of var()/math functions: a track list that fails to parse
-     silently collapses the grid to a single column (the two columns would stack)
-     and a var() that resolves to an unparseable value does the same. Keep them
-     literal and step the sidebar width with the breakpoints underneath. */
+     silently collapses the grid to a single column, and a var() that resolves
+     to an unparseable value does the same. Keep them literal and step the
+     sidebar width with the breakpoints underneath. */
   .layout{ display:grid; grid-template-columns:minmax(0,1fr) 14rem;
-           gap:var(--gap); align-items:stretch; }
+           gap:var(--gap); align-items:start; }
+  .maincol{ min-width:0; display:flex; flex-direction:column; }
   .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
           padding:var(--pad); box-shadow:var(--shadow); min-width:0;
           display:flex; flex-direction:column; min-height:var(--panel-min); }
@@ -236,22 +238,23 @@ export function renderPage(options: PageOptions): string {
 <body>
 <div class="page">
   <div class="content">
-  <header class="topbar">
-    <span class="mark" aria-hidden="true">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3l7 3v5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6l7-3z"></path>
-        <path d="M9.2 12.1l2 2 3.6-3.8"></path>
-      </svg>
-    </span>
-    <div class="titles">
-      <h1>VMC Session Injector</h1>
-      <p>Sign in once, then inject that session into any device you open.</p>
-    </div>
-  </header>
+   <div class="layout">
+    <div class="maincol">
+      <header class="topbar">
+        <span class="mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l7 3v5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6l7-3z"></path>
+            <path d="M9.2 12.1l2 2 3.6-3.8"></path>
+          </svg>
+        </span>
+        <div class="titles">
+          <h1>VMC Session Injector</h1>
+          <p>Sign in once, then inject that session into any device you open.</p>
+        </div>
+      </header>
 
-  <div class="layout">
-    <main class="panel">
+      <main class="panel">
       <form id="form" novalidate>
         <p id="formMsg" class="formmsg hidden" role="alert">
           Enter both the roll number and the activation code.
@@ -324,7 +327,8 @@ export function renderPage(options: PageOptions): string {
         <p class="msg" id="errText"></p>
         <button id="retry" class="btn btn-ghost" type="button">Try again</button>
       </section>
-    </main>
+      </main>
+    </div>
 
     <aside class="aside">
       <h2>How to use</h2>
