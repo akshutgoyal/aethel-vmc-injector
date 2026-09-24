@@ -281,11 +281,18 @@ test("login: the timeout still applies while the body is being read", async () =
         }),
       }),
       new Promise((_resolve, reject) => {
-        const timer = setTimeout(
+        // Deliberately NOT unref'd. The timeout under test is unref'd by the
+        // product code (so a Node process need not wait on it), which leaves
+        // the stalled body read holding no handle at all. This watchdog is
+        // therefore the only thing keeping the event loop alive long enough
+        // for the abort to fire: unref it too and the loop drains, after which
+        // node:test cancels the still-pending test ("Promise resolution is
+        // still pending but the event loop has already resolved") instead of
+        // reporting a real failure.
+        setTimeout(
           () => reject(new Error("login() never settled: the body timeout did not fire")),
           2000
         );
-        timer.unref();
       }),
     ]);
 
