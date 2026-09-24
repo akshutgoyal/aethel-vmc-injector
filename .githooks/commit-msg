@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# commit-msg - strip co-author trailers.
+#
+# This repository is authored solely by akshutgoyal. The Command Code CLI
+# appends a co-author trailer naming its own bot account to every commit
+# message by default, and GitHub renders such a trailer as a second author, so
+# a stray one must never reach a commit.
+#
+# Enable it in a clone with:
+#
+#     git config core.hooksPath .githooks
+#
+# The trailer is removed rather than rejected, so the commit still succeeds and
+# what lands in history has exactly one author.
+
+set -u
+
+msg_file=${1:-}
+[ -n "$msg_file" ] || exit 0
+
+if ! grep -qiE '^[[:space:]]*co-authored-by[[:space:]]*:' "$msg_file"; then
+  exit 0
+fi
+
+tmp="$msg_file.coauthor-strip.$$"
+grep -viE '^[[:space:]]*co-authored-by[[:space:]]*:' "$msg_file" > "$tmp" || true
+
+# Removing a trailer can leave trailing blank lines behind; drop them.
+awk '
+  { line[NR] = $0 }
+  END {
+    last = NR
+    while (last > 0 && line[last] ~ /^[[:space:]]*$/) last--
+    for (i = 1; i <= last; i++) print line[i]
+  }
+' "$tmp" > "$msg_file"
+rm -f "$tmp"
+
+printf '%s\n' 'commit-msg: dropped a co-author trailer - this repository is authored by akshutgoyal only' >&2
+exit 0

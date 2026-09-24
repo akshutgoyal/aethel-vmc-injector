@@ -147,6 +147,23 @@ the meta description of both modes, that no stale name or filename is left
 behind, and that the CSP meta, the `vmc-mode` switch and the theme bootstrap are
 still intact.
 
+## Commit policy
+
+Every commit here is authored and committed by `Akshut Goyal
+<akshutgoyal@gmail.com>` and carries no co-author trailer. The Command Code CLI
+appends a co-author trailer naming its own bot account to commit messages by
+default; that trailer had been baked into the root commit and the history was
+rewritten to drop it.
+
+Two guards keep it that way:
+
+* `~/.commandcode/settings.json` sets `"attribution": { "commit": "" }`, so the
+  tool stops appending the trailer (a project layer such as
+  `.commandcode/settings.json` can override it).
+* `.githooks/commit-msg` drops any co-author trailer from the message before the
+  commit is created. Enable it in a clone with
+  `git config core.hooksPath .githooks`.
+
 ## Notes on the API
 
 `POST https://api-v2-6-0.eapp.vidyamandir.com/mysa/connectorg/organizations/1/login`
