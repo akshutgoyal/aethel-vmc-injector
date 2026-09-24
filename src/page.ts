@@ -51,6 +51,8 @@ export function renderPage(options: PageOptions): string {
     --line:#e5e7e2; --line-2:#d6dad4;
     --accent:#0e6f65; --accent-2:#0a564e; --accent-soft:#e7f2f0; --accent-line:#cfe4e0;
     --accent-ring:rgba(14,111,101,.22);
+    --accent-ink:#ffffff;               /* label colour on an --accent fill */
+    --accent-shadow:rgba(14,111,101,.95);
     --danger:#a13a22; --danger-ink:#7c2c18; --danger-soft:#fbeeea; --danger-line:#f1d8cf;
     --c-com:#98a09b; --c-str:#8a6a2f;
     --s4:16px;
@@ -69,6 +71,10 @@ export function renderPage(options: PageOptions): string {
     --line:#1f3a36; --line-2:#2a4a45;
     --accent:#4ec9b8; --accent-2:#7ad9cc; --accent-soft:#123836; --accent-line:#23544f;
     --accent-ring:rgba(78,201,184,.32);
+    /* The accent is a light mint here, so the label on top of it has to be
+       dark - white on #4ec9b8 is only 2:1 and all but disappears. */
+    --accent-ink:#06231f;
+    --accent-shadow:rgba(0,0,0,.55);
     --danger:#f0927f; --danger-ink:#f7b3a5; --danger-soft:#3a1d17; --danger-line:#5c2f26;
     --c-com:#7d8b88; --c-str:#d8b36a;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 20px 44px -22px rgba(0,0,0,.6);
@@ -80,6 +86,8 @@ export function renderPage(options: PageOptions): string {
       --line:#1f3a36; --line-2:#2a4a45;
       --accent:#4ec9b8; --accent-2:#7ad9cc; --accent-soft:#123836; --accent-line:#23544f;
       --accent-ring:rgba(78,201,184,.32);
+      --accent-ink:#06231f;
+      --accent-shadow:rgba(0,0,0,.55);
       --danger:#f0927f; --danger-ink:#f7b3a5; --danger-soft:#3a1d17; --danger-line:#5c2f26;
       --c-com:#7d8b88; --c-str:#d8b36a;
       --shadow:0 1px 2px rgba(0,0,0,.4), 0 20px 44px -22px rgba(0,0,0,.6);
@@ -174,7 +182,8 @@ export function renderPage(options: PageOptions): string {
         transition:background .16s, border-color .16s, color .16s, transform .06s, box-shadow .16s; }
   .btn:active{ transform:translateY(1px); }
   .btn:focus-visible{ outline:2px solid var(--accent-2); outline-offset:2px; }
-  .btn-primary{ background:var(--accent); color:#fff; box-shadow:0 10px 20px -12px rgba(14,111,101,.95); }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink);
+                box-shadow:0 10px 20px -12px var(--accent-shadow); }
   .btn-primary:hover{ background:var(--accent-2); }
   .btn-ghost{ background:var(--surface); color:var(--ink-2); border-color:var(--line-2); }
   .btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
