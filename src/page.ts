@@ -6,6 +6,13 @@ export interface PageOptions {
   mode: "server" | "static";
 }
 
+/**
+ * Product name. Single source of truth: the tab title, the `<h1>` and the meta
+ * description all read from here, and `server.ts` / `preview.ts` import it so
+ * their startup banners cannot drift from the page.
+ */
+export const BRAND = "Aethel - VMC Injector";
+
 export function renderPage(options: PageOptions): string {
   const mode: PageOptions["mode"] = options.mode;
   const footer =
@@ -22,8 +29,20 @@ export function renderPage(options: PageOptions): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="${BRAND} turns a VMC roll number and activation code into a browser session injector snippet.">
+<meta name="theme-color" content="#0e6f65" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1f1c" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e6f65'/%3E%3Cpath d='M9 9l7 14 7-14' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<!-- Defense-in-depth for the static host. "unsafe-inline" covers only the
+     6-line no-flash theme script below; external scripts remain self-only.
+     base-uri and form-action are honoured from this meta tag. frame-ancestors
+     is IGNORED when a CSP arrives via meta (browsers log a warning), so it is
+     kept only to mirror the local server's policy - and there, framing is
+     blocked by its X-Frame-Options header, not by a CSP header. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api-v2-6-0.eapp.vidyamandir.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'">
 <meta name="vmc-mode" content="${mode}">
-<title>VMC Session Injector</title>
+<title>${BRAND}</title>
+<script>try{var t=localStorage.getItem('vmc-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}else if(matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.dataset.theme='dark';}}catch(e){}</script>
 <style>
   *,*::before,*::after{ box-sizing:border-box; }
   :root{
@@ -44,7 +63,37 @@ export function renderPage(options: PageOptions): string {
     --r:12px; --r-lg:16px;
     --shadow:0 1px 2px rgba(20,24,22,.05), 0 20px 44px -22px rgba(20,24,22,.32);
   }
+  [data-theme="dark"]{
+    --paper:#0a1f1c; --surface:#102825; --sunken:#0d2220;
+    --ink:#e8f0ee; --ink-2:#c6d4d1; --muted:#9db3ae;
+    --line:#1f3a36; --line-2:#2a4a45;
+    --accent:#4ec9b8; --accent-2:#7ad9cc; --accent-soft:#123836; --accent-line:#23544f;
+    --accent-ring:rgba(78,201,184,.32);
+    --danger:#f0927f; --danger-ink:#f7b3a5; --danger-soft:#3a1d17; --danger-line:#5c2f26;
+    --c-com:#7d8b88; --c-str:#d8b36a;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 20px 44px -22px rgba(0,0,0,.6);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme]){
+      --paper:#0a1f1c; --surface:#102825; --sunken:#0d2220;
+      --ink:#e8f0ee; --ink-2:#c6d4d1; --muted:#9db3ae;
+      --line:#1f3a36; --line-2:#2a4a45;
+      --accent:#4ec9b8; --accent-2:#7ad9cc; --accent-soft:#123836; --accent-line:#23544f;
+      --accent-ring:rgba(78,201,184,.32);
+      --danger:#f0927f; --danger-ink:#f7b3a5; --danger-soft:#3a1d17; --danger-line:#5c2f26;
+      --c-com:#7d8b88; --c-str:#d8b36a;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 20px 44px -22px rgba(0,0,0,.6);
+    }
+  }
   html{ -webkit-text-size-adjust:100%; }
+  [data-theme="dark"] body{
+    background:radial-gradient(115vw 60vh at 8% -12%, #123836 0%, transparent 62%), var(--paper);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme]) body{
+      background:radial-gradient(115vw 60vh at 8% -12%, #123836 0%, transparent 62%), var(--paper);
+    }
+  }
   body{
     margin:0; min-height:100vh; min-height:100dvh; color:var(--ink);
     display:flex; flex-direction:column;
@@ -92,13 +141,17 @@ export function renderPage(options: PageOptions): string {
   .field{ min-width:0; }
   label{ display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:var(--ink-2); }
   input{ width:100%; min-height:clamp(2.875rem,3.4vw,3.25rem); padding:.7rem .875rem;
-         color:var(--ink); background:#fdfdfc;
+         color:var(--ink); background:var(--surface);
          border:1px solid var(--line-2); border-radius:10px; outline:none;
          font:16px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
-         transition:border-color .16s, box-shadow .16s, background .16s; }
-  input::placeholder{ color:#a8adaa; }
-  input:hover{ border-color:#c7ccc6; }
-  input:focus{ border-color:var(--accent); background:#fff; box-shadow:0 0 0 4px var(--accent-ring); }
+         transition:border-color .16s, box-shadow .16s, background .16s; color-scheme:light; }
+  [data-theme="dark"] input{ color-scheme:dark; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme]) input{ color-scheme:dark; }
+  }
+  input::placeholder{ color:var(--muted); opacity:.75; }
+  input:hover{ border-color:var(--accent-line); }
+  input:focus{ border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 4px var(--accent-ring); }
   input.invalid{ border-color:var(--danger); box-shadow:0 0 0 4px rgba(161,58,34,.16); }
 
   .control{ position:relative; }
@@ -127,6 +180,17 @@ export function renderPage(options: PageOptions): string {
   .btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
   .btn-text{ background:none; border-color:transparent; color:var(--muted); padding:0 8px; }
   .btn-text:hover{ color:var(--accent); }
+  .theme-btn{ margin-left:auto; flex:none; display:inline-flex; align-items:center; justify-content:center;
+           width:clamp(2.5rem,3.4vw,2.875rem); height:clamp(2.5rem,3.4vw,2.875rem);
+           border:1px solid var(--line-2); border-radius:10px; background:var(--surface);
+           color:var(--ink-2); cursor:pointer;
+           transition:background .16s, border-color .16s, color .16s, box-shadow .16s; }
+  .theme-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .theme-btn:focus-visible{ outline:2px solid var(--accent-2); outline-offset:2px; }
+  .theme-btn svg{ display:block; }
+  .theme-btn .moon{ display:none; }
+  .theme-btn.is-dark .sun{ display:none; }
+  .theme-btn.is-dark .moon{ display:block; }
   #go{ width:100%; max-width:22rem; }
   #form{ margin-block:0 auto; }
 
@@ -186,6 +250,8 @@ export function renderPage(options: PageOptions): string {
   .c-com{ color:var(--c-com); font-style:italic; }
   .c-str{ color:var(--c-str); }
   .c-api{ color:var(--accent-2); font-weight:600; }
+
+  #result .banner:focus, #error:focus{ outline:2px solid var(--accent-2); outline-offset:2px; }
 
   .actions{ display:flex; align-items:center; gap:10px; margin-top:var(--s4); flex-wrap:wrap; }
   .actions .spacer{ flex:1 1 auto; }
@@ -257,9 +323,13 @@ export function renderPage(options: PageOptions): string {
           </svg>
         </span>
         <div class="titles">
-          <h1>VMC Session Injector</h1>
+          <h1>${BRAND}</h1>
           <p>Sign in once, then inject that session into any device you open.</p>
         </div>
+        <button id="themeToggle" class="theme-btn" type="button" aria-pressed="false" aria-label="Switch to dark theme">
+          <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+          <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+        </button>
       </header>
 
       <main class="panel">
@@ -270,12 +340,12 @@ export function renderPage(options: PageOptions): string {
         <div class="fields">
           <div class="field">
             <label for="roll">Roll number</label>
-            <input id="roll" name="roll" autocomplete="off" spellcheck="false" placeholder="09P26000591">
+            <input id="roll" name="roll" type="text" required inputmode="numeric" autocomplete="username" enterkeyhint="go" maxlength="32" spellcheck="false" autocapitalize="off" placeholder="09P26000591">
           </div>
           <div class="field">
             <label for="code">Activation code</label>
             <div class="control">
-              <input id="code" name="code" type="password" autocomplete="off" placeholder="As issued with your roll number">
+              <input id="code" name="code" type="password" required inputmode="text" autocomplete="current-password" enterkeyhint="go" maxlength="64" spellcheck="false" autocapitalize="off" placeholder="As issued with your roll number">
               <button id="peek" class="peek" type="button" aria-label="Show activation code" aria-pressed="false">
                 <span id="icoShow" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -306,7 +376,7 @@ export function renderPage(options: PageOptions): string {
       </section>
 
       <section id="result" class="hidden" aria-live="polite">
-        <p class="banner">
+        <p class="banner" id="resultBanner" tabindex="-1">
           <span class="tick" aria-hidden="true">&#10003;</span>
           Session ready for <b id="who"></b>
         </p>
@@ -317,7 +387,7 @@ export function renderPage(options: PageOptions): string {
         <div class="codebox">
           <div class="codebar">
             <span class="cdot" aria-hidden="true"></span>
-            <span class="filename" id="fName">inject_session.js</span>
+            <span class="filename" id="fName">aethel_inject.js</span>
             <span class="cmeta" id="fMeta"></span>
           </div>
           <pre tabindex="0" aria-label="Generated injector snippet"><code id="jsOut"></code></pre>
@@ -330,7 +400,7 @@ export function renderPage(options: PageOptions): string {
         </div>
       </section>
 
-      <section id="error" class="hidden" role="alert">
+      <section id="error" class="hidden" role="alert" tabindex="-1">
         <span class="warn" aria-hidden="true">!</span>
         <p class="msg" id="errText"></p>
         <button id="retry" class="btn btn-ghost" type="button">Try again</button>

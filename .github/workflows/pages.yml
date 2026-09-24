@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy Aethel - VMC Injector to GitHub Pages
 
 on:
   push:
@@ -34,6 +34,9 @@ jobs:
       - name: Build (Node server + browser bundle + static shell)
         run: npm run build
 
+      - name: Test
+        run: npm test
+
       - name: Verify the Pages output
         run: |
           test -f public/index.html
@@ -42,6 +45,9 @@ jobs:
           test -f public/assets/injector.js
           grep -q 'content="static"' public/index.html
           grep -q './assets/client.js' public/index.html
+          grep -q 'Content-Security-Policy' public/index.html
+          grep -q '<title>Aethel - VMC Injector</title>' public/index.html
+          test -z "$(find public/assets -name '*.map')"
 
       - uses: actions/configure-pages@v6
         with:

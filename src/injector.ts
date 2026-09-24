@@ -44,10 +44,20 @@ export interface InjectorPayload {
   filename: string;
 }
 
+export type LoginFailureReason =
+  | "invalid-input"
+  | "unsupported"
+  | "unreachable"
+  | "timeout"
+  | "api"
+  | "no-token";
+
 /** Shape returned to the UI when a login cannot be completed. */
 export interface LoginFailure {
   ok: false;
   error: string;
+  /** Machine-readable cause, so callers never have to parse `error`. */
+  reason: LoginFailureReason;
 }
 
 export type LoginResult = InjectorPayload | LoginFailure;
@@ -144,7 +154,10 @@ export function buildSession(userData: UserData, deviceId: string): Session {
 
 export function generateInjector(session: Session): string {
   const lines = [
-    "// VMC session injector. Paste into the browser console and press Enter.",
+    // Mirrors BRAND in page.ts. Kept literal so the browser bundle does not
+    // have to pull in the HTML shell module (and the name appears in a JS
+    // comment here, not in the page markup).
+    "// Aethel - VMC Injector. Paste into the browser console and press Enter.",
     "localStorage.clear();",
   ];
 
@@ -160,7 +173,7 @@ export function generateInjector(session: Session): string {
 
   lines.push(
     `window.location.href = '${STUDENT_WEB_URL}';`,
-    "console.log('VMC session injected.');"
+    "console.log('Aethel - VMC Injector: session injected.');"
   );
 
   return lines.join("\n");
@@ -181,7 +194,7 @@ export function buildPayload(
     roll,
     userId: String(userData.id ?? userData.userId ?? ""),
     js: generateInjector(buildSession(userData, deviceId)),
-    filename: `inject_session_${name.replace(/ /g, "_")}_${Math.floor(Date.now() / 1000)}.js`,
+    filename: `aethel_inject_${name.replace(/ /g, "_")}_${Math.floor(Date.now() / 1000)}.js`,
   };
 }
 
@@ -207,9 +220,15 @@ export function apiErrorFrom(payload: unknown): string | null {
   return null;
 }
 
+function isTimeout(err: unknown): boolean {
+  return (
+    err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")
+  );
+}
+
 function describe(err: unknown): string {
   if (err instanceof Error) {
-    if (err.name === "TimeoutError" || err.name === "AbortError") {
+    if (isTimeout(err)) {
       return "the request timed out";
     }
     if (err.message) return err.message;
@@ -217,10 +236,23 @@ function describe(err: unknown): string {
   return String(err ?? "unknown error");
 }
 
-function timeoutSignal(ms: number): AbortSignal | null {
+function timeoutSignal(ms: number): { signal: AbortSignal; cleanup: () => void } | null {
   if (typeof AbortSignal === "undefined") return null;
-  if (typeof AbortSignal.timeout !== "function") return null;
-  return AbortSignal.timeout(ms);
+  if (typeof AbortSignal.timeout === "function") {
+    return { signal: AbortSignal.timeout(ms), cleanup: () => undefined };
+  }
+  if (typeof AbortController === "undefined") return null;
+  const controller = new AbortController();
+  const name = "TimeoutError";
+  const timer = setTimeout(() => {
+    const err = new Error(`The operation timed out after ${ms} ms.`);
+    err.name = name;
+    controller.abort(err);
+  }, ms);
+  // In Node, don't keep the process alive just for the timeout.
+  const t = timer as unknown as { unref?: () => void };
+  if (typeof t.unref === "function") t.unref();
+  return { signal: controller.signal, cleanup: () => clearTimeout(timer) };
 }
 
 /**
@@ -235,22 +267,28 @@ export async function login(
 ): Promise<LoginResult> {
   const doFetch = options.fetchImpl ?? globalThis.fetch;
   if (typeof doFetch !== "function") {
-    return { ok: false, error: "This runtime has no fetch implementation." };
+    return { ok: false, reason: "unsupported", error: "This runtime has no fetch implementation." };
   }
 
   const loginValue = String(roll ?? "").trim();
   const passwordValue = String(code ?? "").trim();
   if (!loginValue || !passwordValue) {
-    return { ok: false, error: "Roll number and activation code are required." };
+    return {
+      ok: false,
+      reason: "invalid-input",
+      error: "Roll number and activation code are required.",
+    };
   }
 
   const deviceId = options.deviceId ?? randomUUID();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.userAgent) headers["User-Agent"] = options.userAgent;
 
-  const signal = timeoutSignal(options.timeoutMs ?? 15_000);
+  const guard = timeoutSignal(options.timeoutMs ?? 15_000);
 
   let response: Response;
+  let payload: unknown = null;
+
   try {
     const init: RequestInit = {
       method: "POST",
@@ -262,17 +300,25 @@ export async function login(
         identityType: "ROLLNUMBER",
       }),
     };
-    if (signal) init.signal = signal;
+    if (guard) init.signal = guard.signal;
     response = await doFetch(LOGIN_URL, init);
-  } catch (err) {
-    return { ok: false, error: `Could not reach the VMC API: ${describe(err)}` };
-  }
 
-  let payload: unknown = null;
-  try {
-    payload = await response.json();
-  } catch {
-    payload = null;
+    // Read the body with the timeout still armed. Clearing the guard as soon as
+    // the headers land would leave a stalled response with no deadline at all.
+    try {
+      payload = await response.json();
+    } catch (err) {
+      if (guard?.signal.aborted) throw err;
+      payload = null;
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      reason: isTimeout(err) ? "timeout" : "unreachable",
+      error: `Could not reach the VMC API: ${describe(err)}`,
+    };
+  } finally {
+    guard?.cleanup();
   }
 
   const apiError = apiErrorFrom(payload);
@@ -280,6 +326,7 @@ export async function login(
   if (!response.ok) {
     return {
       ok: false,
+      reason: "api",
       error:
         apiError ??
         `Login failed (HTTP ${response.status}). Check the roll number and activation code.`,
@@ -288,7 +335,13 @@ export async function login(
 
   const data = (payload ?? {}) as UserData;
   if (!data.accessToken) {
-    return { ok: false, error: apiError ?? "Login failed - no access token was returned." };
+    // The API refuses credentials with HTTP 200 and an error body, so an
+    // apiError here means "refused", not a malformed token-less 200.
+    return {
+      ok: false,
+      reason: apiError ? "api" : "no-token",
+      error: apiError ?? "Login failed - no access token was returned.",
+    };
   }
 
   return buildPayload(data, deviceId, loginValue);

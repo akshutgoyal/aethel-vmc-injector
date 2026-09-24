@@ -1,18 +1,20 @@
-# VMC Session Injector
+# Aethel - VMC Injector
+
+*Aethel* is the name of this UI; *VMC* is the platform it signs into.
 
 Turns a VMC roll number + activation code into a JavaScript snippet that writes a
 signed-in session into `localStorage`. Paste the snippet into the browser console
 on any device and that device lands on `studentweb.vidyamandir.com/learn` already
 signed in.
 
-**Live site: <https://akshutgoyal.github.io/vmc-weblogin/>**
+**Live site: <https://akshutgoyal.github.io/aethel-vmc-injector/>**
 
 Two deployments share one codebase:
 
 | Target | How the login request is made | Where it runs |
 | --- | --- | --- |
 | **Local (Node)** | `node:http` server calls the VMC API from your machine | `http://127.0.0.1:8765` |
-| **GitHub Pages** | the browser calls the VMC API itself (CORS allows it) | `https://<user>.github.io/vmc-weblogin/` |
+| **GitHub Pages** | the browser calls the VMC API itself (CORS allows it) | `https://<user>.github.io/aethel-vmc-injector/` |
 
 Both render the same HTML, the same CSS and the same compiled client bundle, so
 the generated snippet is identical no matter where you run it.
@@ -41,7 +43,7 @@ client reads it and picks the transport:
 
 ## Layout
 
-The shell is capped at `92rem` (1472px) rather than the old 960px, and every
+The shell is capped at `110rem` rather than the old 960px, and every
 element inside it scales with the viewport instead of being pinned to a fixed
 size:
 
@@ -100,9 +102,9 @@ This serves the exact bytes GitHub Pages will host, including the
 2. Push to `main`, or run the workflow manually with `gh workflow run pages.yml`.
 
 The workflow typechecks, builds, sanity-checks `public/`, uploads it as the Pages
-artifact and deploys it to <https://akshutgoyal.github.io/vmc-weblogin/>. All
+artifact and deploys it to <https://akshutgoyal.github.io/aethel-vmc-injector/>. All
 paths in the shell are relative (`./assets/...`), so the site works from the
-`/vmc-weblogin/` subpath without extra configuration.
+`/aethel-vmc-injector/` subpath without extra configuration.
 
 > GitHub Pages serves static files only and cannot run `src/server.ts`, which is
 > why the hosted copy calls the VMC API from the browser. That endpoint answers
@@ -124,6 +126,26 @@ paths in the shell are relative (`./assets/...`), so the site works from the
 | `npm run preview` | build + static server for `public/` |
 | `npm run typecheck` | typechecks the Node and the browser projects |
 | `npm run clean` | deletes `dist/` and `public/` |
+| `npm test` | builds `dist/` then runs `node --test test/*.mjs` |
+
+## Testing
+
+```bash
+npm test
+```
+
+`npm test` rebuilds `dist/` (`npm run build:node`) and then runs the
+`node:test` + `node:assert` suites in `test/`. `test/injector.test.mjs` covers
+the shared core against `dist/injector.js`: `buildSession` (15-key shape, nulls
+for missing fields, the `VMCProd` appFlavour contract), `buildPayload` (filename
+format, snippet markers, branding), `apiErrorFrom`
+(error/message/errors-array/non-object branches), `randomUUID` (v4 format), and
+`login()` with a mocked fetch (success, HTTP-200-with-error body, HTTP 500,
+network throw/timeout, empty inputs, token-less 200). `test/page.test.mjs`
+renders `dist/page.js` and asserts the brand appears in the title, the `<h1>` and
+the meta description of both modes, that no stale name or filename is left
+behind, and that the CSP meta, the `vmc-mode` switch and the theme bootstrap are
+still intact.
 
 ## Notes on the API
 
@@ -144,6 +166,9 @@ is what makes the injected session look like a device the platform has already
 seen.
 
 ## Generated snippet
+
+Every snippet starts with an `// Aethel - VMC Injector.` header comment and is
+offered as `aethel_inject_<name>_<unix seconds>.js`.
 
 The snippet clears `localStorage` and then writes 15 keys — `accessToken`,
 `refreshToken`, `userId`, `name`, `deviceId`, `domainId`, `organizationId`,

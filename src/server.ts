@@ -9,11 +9,24 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
-import { login } from "./injector.js";
-import { renderPage } from "./page.js";
+import { login, type LoginFailureReason } from "./injector.js";
+import { BRAND, renderPage } from "./page.js";
+
+const DEFAULT_PORT = 8765;
+
+function resolvePort(): number {
+  const parsed = Number(process.env["PORT"] ?? DEFAULT_PORT);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    console.warn(
+      `warning: invalid PORT ${JSON.stringify(process.env["PORT"] ?? "")}, falling back to ${DEFAULT_PORT}.`
+    );
+    return DEFAULT_PORT;
+  }
+  return parsed;
+}
 
 const HOST = process.env["HOST"] ?? "127.0.0.1";
-const PORT = Number(process.env["PORT"] ?? 8765);
+const PORT = resolvePort();
 const MAX_BODY = 1_000_000;
 
 // Browsers cannot set a User-Agent, but Node's fetch can.
@@ -33,9 +46,35 @@ const ASSET_TYPES: Record<string, string> = {
   ".ico": "image/x-icon",
 };
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "X-Frame-Options": "DENY",
+};
+
+/** Merge the shared security headers with per-response headers. */
+function baseHeaders(extra: Record<string, string>): Record<string, string> {
+  return { ...SECURITY_HEADERS, ...extra };
+}
+
+// Versioned-style static assets that are safe to cache for an hour;
+// everything else served from here keeps no-store (including .map files).
+const CACHEABLE_ASSET_EXTS = new Set([".js", ".css", ".svg", ".ico"]);
+
+function assetCacheControl(ext: string): string {
+  return CACHEABLE_ASSET_EXTS.has(ext) ? "public, max-age=3600" : "no-store";
+}
+
 function send(res: http.ServerResponse, status: number, type: string, body: string): void {
   const buf = Buffer.from(body, "utf8");
-  res.writeHead(status, { "Content-Type": type, "Content-Length": String(buf.length) });
+  res.writeHead(
+    status,
+    baseHeaders({
+      "Content-Type": type,
+      "Content-Length": String(buf.length),
+      "Cache-Control": "no-store",
+    })
+  );
   res.end(buf);
 }
 
@@ -66,16 +105,31 @@ async function serveAsset(rawUrl: string, res: http.ServerResponse): Promise<voi
   const file = path.join(ASSETS_DIR, name);
   try {
     const body = await readFile(file);
-    res.writeHead(200, {
-      "Content-Type": ASSET_TYPES[path.extname(name)] ?? "application/octet-stream",
-      "Content-Length": String(body.length),
-      "Cache-Control": "no-store",
-    });
+    const ext = path.extname(name);
+    res.writeHead(
+      200,
+      baseHeaders({
+        "Content-Type": ASSET_TYPES[ext] ?? "application/octet-stream",
+        "Content-Length": String(body.length),
+        "Cache-Control": assetCacheControl(ext),
+      })
+    );
     res.end(body);
   } catch {
     send(res, 404, "text/plain; charset=utf-8", "Not found");
   }
 }
+
+// The browser client parses {ok:false} regardless of status, so these codes are
+// for logs and proxies. Derived from the failure reason, never from the message.
+const FAILURE_STATUS: Record<LoginFailureReason, number> = {
+  unreachable: 502,
+  timeout: 502,
+  unsupported: 500,
+  "invalid-input": 400,
+  api: 401,
+  "no-token": 401,
+};
 
 async function handleLogin(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
   let payload: { roll?: unknown; code?: unknown };
@@ -94,7 +148,11 @@ async function handleLogin(req: http.IncomingMessage, res: http.ServerResponse):
   }
 
   const result = await login(roll, code, { fetchImpl: fetch, userAgent: USER_AGENT });
-  sendJson(res, 200, result);
+  if (result.ok) {
+    sendJson(res, 200, result);
+    return;
+  }
+  sendJson(res, FAILURE_STATUS[result.reason], result);
 }
 
 async function route(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -130,7 +188,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`VMC Session Injector running at http://${HOST}:${PORT}`);
+  console.log(`${BRAND} running at http://${HOST}:${PORT}`);
   if (!existsSync(CLIENT_SCRIPT)) {
     console.warn("warning: browser bundle missing. Run `npm run build` first.");
   }

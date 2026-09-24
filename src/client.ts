@@ -1,5 +1,5 @@
 /**
- * Browser UI for the VMC session injector.
+ * Browser UI for Aethel - VMC Injector.
  *
  * The same compiled file is served by the local Node server and by GitHub
  * Pages. The only difference between the two deployments is the transport:
@@ -41,6 +41,8 @@ const copyBtn = el<HTMLButtonElement>("copy");
 const downloadBtn = el<HTMLButtonElement>("download");
 const liveRegion = el<HTMLElement>("live");
 const jsOut = el<HTMLElement>("jsOut");
+const goBtn = el<HTMLButtonElement>("go");
+const themeToggle = el<HTMLButtonElement>("themeToggle");
 
 const phrases = [
   "Contacting the VMC API",
@@ -55,7 +57,7 @@ const HL =
 const COUNT = /localStorage\.setItem/g;
 
 let js = "";
-let filename = "inject_session.js";
+let filename = "aethel_inject.js";
 let timer: ReturnType<typeof setInterval> | null = null;
 let step = 0;
 
@@ -69,7 +71,7 @@ async function request(roll: string, code: string): Promise<LoginResult> {
   });
   const data: unknown = await res.json();
   if (!data || typeof data !== "object") {
-    return { ok: false, error: "Unexpected response from the local server." };
+    return { ok: false, reason: "api", error: "Unexpected response from the local server." };
   }
 
   const parsed = data as Record<string, unknown>;
@@ -80,10 +82,10 @@ async function request(roll: string, code: string): Promise<LoginResult> {
       roll: String(parsed["roll"] ?? ""),
       userId: String(parsed["userId"] ?? ""),
       js: String(parsed["js"] ?? ""),
-      filename: String(parsed["filename"] ?? "inject_session.js"),
+      filename: String(parsed["filename"] ?? "aethel_inject.js"),
     };
   }
-  return { ok: false, error: String(parsed["error"] ?? "Login failed.") };
+  return { ok: false, reason: "api", error: String(parsed["error"] ?? "Login failed.") };
 }
 
 function reveal(node: HTMLElement): void {
@@ -108,14 +110,21 @@ function showError(message: string): void {
   hide(resultBox);
   errText.textContent = message;
   reveal(errorBox);
-  liveRegion.textContent = message;
+  announce(message);
+  errorBox.focus();
 }
 
-function setLine(text: string): void {
+/** Writes the visible loading status line. */
+function setLog(text: string): void {
+  logLine.textContent = text;
+}
+
+/** Screen-reader announcement only; never touches visible text. */
+function announce(text: string): void {
   liveRegion.textContent = text;
 }
 
-function esc(value: unknown): string {
+function escapeHtml(value: unknown): string {
   const map: Record<string, string> = {
     "&": "&amp;",
     "<": "&lt;",
@@ -132,15 +141,16 @@ function highlight(code: string): string {
   let match: RegExpExecArray | null;
   HL.lastIndex = 0;
   while ((match = HL.exec(code)) !== null) {
-    out += esc(code.slice(last, match.index));
+    out += escapeHtml(code.slice(last, match.index));
     const cls = match[1] ? "c-com" : match[2] ? "c-str" : "c-api";
-    out += '<span class="' + cls + '">' + esc(match[0]) + "</span>";
+    out += '<span class="' + cls + '">' + escapeHtml(match[0]) + "</span>";
     last = match.index + match[0].length;
   }
-  return out + esc(code.slice(last));
+  return out + escapeHtml(code.slice(last));
 }
 
 function startLoading(): void {
+  js = "";
   hide(form);
   hide(resultBox);
   hide(errorBox);
@@ -148,8 +158,7 @@ function startLoading(): void {
   reveal(statusBox);
   step = 0;
   const tick = (): void => {
-    logLine.innerHTML =
-      "<b>&gt;</b> " + (phrases[step % phrases.length] ?? phrases[0] ?? "");
+    setLog("\u203a " + (phrases[step % phrases.length] ?? phrases[0] ?? ""));
     step += 1;
   };
   tick();
@@ -163,51 +172,60 @@ function stopLoading(): void {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-
-  const roll = rollInput.value.trim();
-  const code = codeInput.value.trim();
-  rollInput.classList.toggle("invalid", !roll);
-  codeInput.classList.toggle("invalid", !code);
-  if (!roll || !code) {
-    showFormMsg(true);
-    (!roll ? rollInput : codeInput).focus();
-    return;
-  }
-
-  startLoading();
+  goBtn.disabled = true;
   try {
-    const data = await request(roll, code);
-    stopLoading();
-
-    if (!data.ok) {
-      showError(data.error);
+    const roll = rollInput.value.trim();
+    const code = codeInput.value.trim();
+    rollInput.classList.toggle("invalid", !roll);
+    codeInput.classList.toggle("invalid", !code);
+    if (!roll || !code) {
+      showFormMsg(true);
+      (!roll ? rollInput : codeInput).focus();
       return;
     }
 
-    js = data.js;
-    filename = data.filename;
-    jsOut.innerHTML = highlight(js);
-    el<HTMLElement>("who").textContent = data.name || "unknown";
-    el<HTMLElement>("fRoll").textContent = data.roll || "Not returned";
-    el<HTMLElement>("fUser").textContent = data.userId || "Not returned";
-    el<HTMLElement>("fName").textContent = filename;
+    startLoading();
+    try {
+      const data = await request(roll, code);
+      stopLoading();
 
-    const bytes = new TextEncoder().encode(js).length;
-    const keys = (js.match(COUNT) ?? []).length;
-    el<HTMLElement>("fMeta").textContent =
-      keys + " keys \u00b7 " + (bytes < 1024 ? bytes + " B" : (bytes / 1024).toFixed(1) + " KB");
+      if (!data.ok) {
+        showError(data.error);
+        return;
+      }
 
-    hide(statusBox);
-    reveal(resultBox);
-    setLine("Session ready for " + (data.name || "user") + ".");
-  } catch (err) {
-    stopLoading();
-    console.error(err);
-    showError(
-      MODE === "static"
-        ? "Could not reach the VMC API. Check your connection and try again."
-        : "Could not reach the local server. Check that it is still running."
-    );
+      js = data.js;
+      filename = data.filename;
+      jsOut.innerHTML = highlight(js);
+      el<HTMLElement>("who").textContent = data.name || "unknown";
+      el<HTMLElement>("fRoll").textContent = data.roll || "Not returned";
+      el<HTMLElement>("fUser").textContent = data.userId || "Not returned";
+      el<HTMLElement>("fName").textContent = filename;
+
+      const bytes = new TextEncoder().encode(js).length;
+      const keys = (js.match(COUNT) ?? []).length;
+      el<HTMLElement>("fMeta").textContent =
+        keys + " keys \u00b7 " + (bytes < 1024 ? bytes + " B" : (bytes / 1024).toFixed(1) + " KB");
+
+      hide(statusBox);
+      reveal(resultBox);
+      announce(
+        "Session ready for " +
+          (data.name || "user") +
+          ". Your injector snippet is shown below."
+      );
+      el<HTMLElement>("resultBanner").focus();
+    } catch (err) {
+      stopLoading();
+      console.error(err);
+      showError(
+        MODE === "static"
+          ? "Could not reach the VMC API. Check your connection and try again."
+          : "Could not reach the local server. Check that it is still running."
+      );
+    }
+  } finally {
+    goBtn.disabled = false;
   }
 });
 
@@ -249,7 +267,7 @@ copyBtn.addEventListener("click", async () => {
   }
   const previous = copyBtn.textContent;
   copyBtn.textContent = ok ? "Copied" : "Copy failed";
-  setLine(ok ? "Snippet copied to clipboard." : "Copy failed. Select the code and copy it manually.");
+  announce(ok ? "Snippet copied to clipboard." : "Copy failed. Select the code and copy it manually.");
   setTimeout(() => {
     copyBtn.textContent = previous;
   }, 1600);
@@ -264,10 +282,11 @@ downloadBtn.addEventListener("click", () => {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-  setLine(filename + " downloaded.");
+  announce(filename + " downloaded.");
 });
 
 function reset(): void {
+  js = "";
   rollInput.value = "";
   codeInput.value = "";
   rollInput.classList.remove("invalid");
@@ -287,3 +306,41 @@ function reset(): void {
 
 el<HTMLButtonElement>("again").addEventListener("click", reset);
 el<HTMLButtonElement>("retry").addEventListener("click", reset);
+
+const THEME_KEY = "vmc-theme";
+
+function applyTheme(theme: "light" | "dark"): void {
+  document.documentElement.dataset["theme"] = theme;
+  const dark = theme === "dark";
+  themeToggle.setAttribute("aria-pressed", String(dark));
+  themeToggle.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  themeToggle.classList.toggle("is-dark", dark);
+}
+
+function initTheme(): void {
+  let theme: "light" | "dark" | null = null;
+  try {
+    const stored = window.localStorage.getItem(THEME_KEY);
+    if (stored === "light" || stored === "dark") theme = stored;
+  } catch {
+    theme = null;
+  }
+  if (!theme) {
+    theme =
+      window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  applyTheme(theme);
+}
+
+themeToggle.addEventListener("click", () => {
+  const next: "light" | "dark" =
+    document.documentElement.dataset["theme"] === "dark" ? "light" : "dark";
+  applyTheme(next);
+  try {
+    window.localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* storage unavailable; theme still applies for this session */
+  }
+});
+
+initTheme();
